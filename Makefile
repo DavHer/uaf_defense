@@ -1,12 +1,12 @@
-CC	= g++
+CC	= gcc
 CFLAGS	= -g
-PROYECT = defensa
+PROYECT = uaf_defense
 
 .PHONY: all 
 
 
 all: 
-	$(CC) $(CFLAGS) -o $(PROYECT) utils.c ptrace.c defensa.cpp
+	$(CC) $(CFLAGS) -o $(PROYECT) defensa.c
 
 
 clean:

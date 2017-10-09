@@ -1,6 +1,4 @@
 #include <iostream>
-#include <stdio.h>
-#include <assert.h>
 #include <unistd.h>
 
 using namespace std;
@@ -48,16 +46,13 @@ void addrSeg(){
 }
 
 void check(){
-    extern char edata;
     int r3;
     asm("mov %0, r3" : "=r"(r3) :);
-    printf("R3 = 0x%0x\n", r3);
-    printf("edata: %p\n", &edata);
-    if(r3 <= (int)&edata){
-        cout<<"I am valid"<<endl;
-    } else {
-        cout<<"I am not valid"<<endl;
-        assert(0);
+    if(r3 >= 0x23000 && r3 <= 0x48000){
+        asm("mov r7, #1" ::);
+        asm("svc #0" ::);
+        asm("mov r3, r3" ::);
+        _exit(0); 
     }
 }
 
@@ -71,9 +66,9 @@ int main(){
 
     check();
 
-    /*while(1){
+    while(1){
         sleep(2);
         cout<<"Durmiendo..."<<endl;
-    }*/
+    }
     return 0;
 }
