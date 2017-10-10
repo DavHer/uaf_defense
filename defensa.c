@@ -10,20 +10,16 @@
 #define ARM_BL_MASK     0xeb000000
 #define ARM_BL_CLEAR    0xebffffff
         
-/*
-00010d08 <_Z5checkv>:
-                e92d4800        push    {fp, lr}
-   10d0c:       e2433a23        sub     r3, r3, #143360 ; 0x23000
-   10d10:       e3530a25        cmp     r3, #151552     ; 0x25000
-   10d14:       9a000000        bls     10d1c <_Z5checkv+0x14>
-                e12fff33        blx     r3
-                e8bd8800        pop     {fp, pc}
-   10d18:       e12fff1e        bx      lr     
-   10d20:       0xe3a07001      mov     r7, #1   
-   10d24:       0xef000000      svc     0x00000000
-*/
-
-static long text[] = {0xe3530a23};
+// TODO: Load this directly from binary
+static long text[] =    {0xe92d4008,    // push {r3, lr}
+                         0xe2433a23,    // sub  r3, r3, #143360 ; 0x23000
+                         0xe3530a25,    // cmp  r3, #151552     ; 0x25000
+                         0x9a000002,    // bls  1c <exit>
+                         0xe49d3004,    // pop  {r3}            ; (ldr r3, [sp], #4)
+                         0xe12fff33,    // blx  r3
+                         0xe49df004,    // pop  {pc}            ; (ldr pc, [sp], #4)
+                         0xe3a07001,    // mov  r7, #1
+                         0xef000000};   // svc  0x00000000
                       
 long get_bl_instr(ulong target, ulong pc) {
     long ret = 0;
@@ -40,7 +36,10 @@ ulong find_free_addr(pid_t pid, ulong addr, long seg_size, size_t size){
     int i = 0;
     size_t count = 0;
     ulong free_addr = 0;
+    size /= sizeof(word);
 
+    printf("%s Enter pid %d addr 0x%lx seg_size 0x%lx size 0x%lx\n", __func__,
+           pid, free_addr, seg_size, size);
 
     while(bytes_read < seg_size){
         word = ptrace(PTRACE_PEEKTEXT, pid, addr + bytes_read, NULL);
@@ -49,16 +48,16 @@ ulong find_free_addr(pid_t pid, ulong addr, long seg_size, size_t size){
                     pid, addr + bytes_read);
             return 0;
         }
-        //printf("0x%lx:\t0x%lx\n", addr + bytes_read, word);
+        // printf("0x%lx:\t0x%lx\n", addr + bytes_read, word);
         bytes_read += sizeof(word);
 
         
-if(word == 0){
+        if(word == 0){
             count++;
         } else {
             count = 0;
         }
-        if(count == size){
+        if(count == (size)){
             free_addr = (addr + bytes_read) - (count * sizeof(word));
             printf("%s Found empty addres space at 0x%lx\n", __func__, free_addr);
             break;
@@ -146,8 +145,10 @@ void start_debugger(int pid, char* program){
     }
 
     free_addr = find_exec_addr(pid, sizeof(text));
-    write_to_addr(pid, free_addr, text, sizeof(text));
-    read_from_addr(pid, free_addr, sizeof(text));
+    if(free_addr != 0){
+        write_to_addr(pid, free_addr, text, sizeof(text));
+        read_from_addr(pid, free_addr, sizeof(text));
+    }
     printf("%s Detaching %d\n", __func__, pid);
     if(ptrace(PTRACE_DETACH,  pid, 0, 0) < 0){
         printf("%s ptrace: Error detach\n", __func__);
@@ -170,10 +171,6 @@ int main(int argc, char *argv[]){
 
     int child, ret;
 
-    get_bl_instr(0x108f4, 0x109dc);
-    get_bl_instr(0x10b60, 0x1095c);
-    get_bl_instr(0x00010d1c, 0x00010d14);
-    return 0;
     if(argc < 2){
         printf("Usage: defensa <file to exec> [params]\n");
         return 0;
