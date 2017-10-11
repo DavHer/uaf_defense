@@ -64,8 +64,6 @@ int main(){
     padre->caminar();
     padre->hablar();
 
-    check();
-
     while(1){
         sleep(2);
         cout<<"Durmiendo..."<<endl;
